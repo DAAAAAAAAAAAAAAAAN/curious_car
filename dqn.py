@@ -136,7 +136,7 @@ def render(start, actions, seed):
 
 
 def run_episodes(train, q_model, curiosity_model, memory, env, num_episodes,
-                 batch_size, discount_factor, learn_rate, curious=False, render=False):
+                 batch_size, discount_factor, learn_rate, curious=False, do_render=False):
 
     optimizer = optim.Adam([
         {
@@ -200,8 +200,8 @@ def run_episodes(train, q_model, curiosity_model, memory, env, num_episodes,
             if curious:
                 curiosity_loss = train(curiosity_model, memory, optimizer, batch_size)
 
-        print(i, ep_length)
-        if ep_length < 200 and render:
+        print(i, ep_length, max_x)
+        if ep_length < 200 and do_render:
             render(start, actions, i)
 
         episode_durations.append(ep_length)
@@ -230,5 +230,5 @@ if __name__ == '__main__':
     q_model = QNetwork(num_hidden)
     curiousity_model = StatePredictor(2,3,num_hidden, 'cpu')
 
-    episode_durations, episode_loss = run_episodes(train, q_model, curiousity_model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, curious=True, render=True)
+    episode_durations, episode_loss = run_episodes(train, q_model, curiousity_model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, curious=True, do_render=True)
     print(episode_durations, episode_loss)
