@@ -138,21 +138,23 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
 
     return episode_durations
 
-# Let's run it!
-num_episodes = 100
-batch_size = 64
-discount_factor = 0.8
-learn_rate = 1e-3
-memory = ReplayMemory(10000)
-num_hidden = 128
-seed = 42  # This is not randomly chosen
 
-# We will seed the algorithm (before initializing QNetwork!) for reproducability
-random.seed(seed)
-torch.manual_seed(seed)
-env.seed(seed)
+if __name__ == '__main__':
+    # Let's run it!
+    num_episodes = 100
+    batch_size = 64
+    discount_factor = 0.8
+    learn_rate = 1e-3
+    memory = ReplayMemory(10000)
+    num_hidden = 128
+    seed = 42  # This is not randomly chosen
 
-model = QNetwork(num_hidden)
+    # We will seed the algorithm (before initializing QNetwork!) for reproducability
+    random.seed(seed)
+    torch.manual_seed(seed)
+    env.seed(seed)
 
-episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
-print(episode_durations)
+    model = QNetwork(num_hidden)
+
+    episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
+    print(episode_durations)
