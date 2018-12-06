@@ -25,7 +25,8 @@ class StatePredictor(nn.Module):
 
     def forward(self, state, action):
         batch_size = action.size()[0]
-        action_one_hot = torch.zeros((batch_size, self.num_action))
+        action_one_hot = torch.zeros((batch_size, self.num_action),
+                                     device=self.device)
 
         action_one_hot = action_one_hot.scatter(1, action.unsqueeze(1), 1) \
             .to(torch.float)

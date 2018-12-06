@@ -10,7 +10,7 @@ import torch.nn.functional as F
 import gym
 from tqdm import tqdm as _tqdm
 from ReplayMemory import ReplayMemory
-from matplotlib import pyplot as plt
+
 
 def tqdm(*args, **kwargs):
     return _tqdm(*args, **kwargs, mininterval=1)  # Safety, do not overflow buffer
@@ -21,10 +21,13 @@ env = gym.envs.make("MountainCar-v0")
 
 class QNetwork(nn.Module):
 
-    def __init__(self, num_hidden=128):
+    def __init__(self, device="cpu", num_hidden=128):
         nn.Module.__init__(self)
+        self.device = torch.device(device)
         self.l1 = nn.Linear(2, num_hidden)
         self.l2 = nn.Linear(num_hidden, 3)
+
+        self.to(device)
 
     def forward(self, x):
         out = torch.relu(self.l1(x))
@@ -35,8 +38,7 @@ class QNetwork(nn.Module):
 def select_action(model, state, epsilon):
 
     with torch.no_grad():
-
-        state = torch.tensor(state.astype(np.float32))
+        state = torch.tensor(state.astype(np.float32), device=model.device)
 
         # compute action values
         action_values = model(state)
@@ -57,7 +59,7 @@ def get_epsilon(it):
     return linear[it]
 
 def compute_q_val(model, state, action):
-    output = model(torch.tensor(state, dtype=torch.float))
+    output = model(torch.tensor(state, dtype=torch.float, device=model.device))
     return output[np.arange(output.size(0)), action]
 
 def compute_target(model, reward, next_state, done, discount_factor):
@@ -83,11 +85,14 @@ def train(model, memory, optimizer, batch_size, discount_factor=None):
     state, action, reward, next_state, done = zip(*transitions)
 
     # convert to PyTorch and define types
-    state = torch.tensor(state, dtype=torch.float)
-    action = torch.tensor(action, dtype=torch.int64)  # Need 64 bit to use them as index
-    next_state = torch.tensor(next_state, dtype=torch.float)
-    reward = torch.tensor(reward, dtype=torch.float)
-    done = torch.tensor(done, dtype=torch.uint8)  # Boolean
+    state = torch.tensor(state, dtype=torch.float, device=model.device)
+    action = torch.tensor(action, dtype=torch.int64,
+                          device=model.device)  # Need 64 bit to use them as index
+    next_state = torch.tensor(next_state, dtype=torch.float,
+                              device=model.device)
+    reward = torch.tensor(reward, dtype=torch.float, device=model.device)
+    done = torch.tensor(done, dtype=torch.uint8,
+                        device=model.device)  # Boolean
 
     if isinstance(model, QNetwork):
         # compute the q value
@@ -137,17 +142,13 @@ def render(start, actions, seed):
 
 def run_episodes(train, q_model, curiosity_model, memory, env, num_episodes,
                  batch_size, discount_factor, learn_rate, curious=False, render=False):
-
-    optimizer = optim.Adam([
-        {
-            'params' : q_model.parameters(),
-            'lr' : learn_rate
-        },
-        {
-            'params' : curiosity_model.parameters(),
-            'lr' : learn_rate
-        }
-    ])
+    optimizer = optim.Adam([{
+        'params': q_model.parameters(),
+        'lr': learn_rate
+    }, {
+        'params': curiosity_model.parameters(),
+        'lr': learn_rate
+    }])
 
     global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
     episode_durations = []  #
@@ -175,15 +176,19 @@ def run_episodes(train, q_model, curiosity_model, memory, env, num_episodes,
 
             actions.append(action)
 
-           # perform action
+            # perform action
             next_state, reward, done, _ = env.step(action)
 
             if curious:
                 with torch.no_grad():
-                    state_tensor = torch.tensor([state], dtype=torch.float)
-                    action = torch.tensor([action])
+                    state_tensor = torch.tensor([state], dtype=torch.float,
+                                                device=curiosity_model.device)
+                    action = torch.tensor([action],
+                                          device=curiosity_model.device)
                     pred = curiosity_model(state_tensor, action)
-                    reward = F.mse_loss(pred, torch.tensor([next_state], dtype=torch.float))
+                    reward = F.mse_loss(pred, torch.tensor([next_state],
+                                                           dtype=torch.float,
+                                                           device=curiosity_model.device))
                     reward = reward.item()
 
             # remember transition
@@ -214,6 +219,7 @@ def run_episodes(train, q_model, curiosity_model, memory, env, num_episodes,
 if __name__ == '__main__':
 
     # Let's run it!
+    device = "cpu   "
     num_episodes = 500
     batch_size = 64
     discount_factor = 0.97
@@ -227,8 +233,8 @@ if __name__ == '__main__':
     torch.manual_seed(seed)
     env.seed(seed)
 
-    q_model = QNetwork(num_hidden)
-    curiousity_model = StatePredictor(2,3,num_hidden, 'cpu')
+    q_model = QNetwork(device, num_hidden)
+    curiousity_model = StatePredictor(2, 3, num_hidden, device)
 
     episode_durations, episode_loss = run_episodes(train, q_model, curiousity_model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, curious=True, render=True)
     print(episode_durations, episode_loss)
