@@ -171,7 +171,7 @@ def run_episodes(train, q_model, curiosity_model, memory, env, num_episodes,
         while not done:
             # calculate next action
             epsilon = get_epsilon(global_steps)
-            action = select_action(model, state, epsilon)
+            action = select_action(q_model, state, epsilon)
 
             actions.append(action)
 
@@ -180,7 +180,11 @@ def run_episodes(train, q_model, curiosity_model, memory, env, num_episodes,
 
             if curious:
                 with torch.no_grad():
-                    reward = curiosity_model(state, action)
+                    state_tensor = torch.tensor([state], dtype=torch.float)
+                    action = torch.tensor([action])
+                    pred = curiosity_model(state_tensor, action)
+                    reward = F.mse_loss(pred, torch.tensor([next_state], dtype=torch.float))
+                    reward = reward.item()
 
             # remember transition
             memory.push((state, action, reward, next_state, done))
@@ -196,6 +200,7 @@ def run_episodes(train, q_model, curiosity_model, memory, env, num_episodes,
             if curious:
                 curiosity_loss = train(curiosity_model, memory, optimizer, batch_size)
 
+        print(i, ep_length)
         if ep_length < 200 and render:
             render(start, actions, i)
 
@@ -222,8 +227,8 @@ if __name__ == '__main__':
     torch.manual_seed(seed)
     env.seed(seed)
 
-    model = QNetwork(num_hidden)
-    
+    q_model = QNetwork(num_hidden)
+    curiousity_model = StatePredictor(2,3,num_hidden, 'cpu')
 
-    episode_durations, episode_loss = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
+    episode_durations, episode_loss = run_episodes(train, q_model, curiousity_model, memory, env, num_episodes, batch_size, discount_factor, learn_rate, curious=True, render=True)
     print(episode_durations, episode_loss)
