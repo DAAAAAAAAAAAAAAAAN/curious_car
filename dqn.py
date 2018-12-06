@@ -103,6 +103,31 @@ def train(model, memory, optimizer, batch_size, discount_factor):
 
     return loss.item()  # Returns a Python scalar, and releases history (similar to .detach())
 
+def render(model, seed, global_steps):
+    import time
+    # The nice thing about the CARTPOLE is that it has very nice rendering functionality (if you are on a local environment). Let's have a look at an episode
+    env.seed(seed)
+    random.seed(seed)
+
+    state = env.reset()
+    env.render()
+    done = False
+    ep_length = 0
+    max_x = state[0]
+    while not done:
+        action = select_action(model, state, global_steps)
+
+        # perform action
+        next_state, reward, done, _ = env.step(action)
+        env.render()
+        time.sleep(0.05)
+
+        ep_length += 1
+        max_x = max(max_x, next_state[0])
+
+    print('finished in', ep_length, 'at', max_x)
+    env.close()  # Close the environ
+
 def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate):
 
     optimizer = optim.Adam(model.parameters(), learn_rate)
@@ -112,10 +137,14 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
     losses =[]
     for i in tqdm(range(num_episodes)):
 
+        env.seed(i)
+        random.seed(i)
+
         # initialize episode
         done = False
         state = env.reset()
         ep_length = 0
+        max_x = state[0]
 
         # keep acting until terminal state is reached
         while not done:
@@ -132,9 +161,14 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
 
             ep_length += 1
             global_steps += 1
+            max_x = max(max_x, state[0])
 
             # updade model
             loss = train(model, memory, optimizer, batch_size, discount_factor)
+
+        if ep_length < 200:
+            with torch.no_grad():
+                render(model, i, global_steps)
 
         episode_durations.append(ep_length)
         losses.append(loss)
