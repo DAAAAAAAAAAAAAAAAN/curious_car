@@ -25,7 +25,8 @@ class StatePredictor(nn.Module):
 
     def forward(self, state, action):
         batch_size = action.size()[0]
-        action_one_hot = torch.zeros((batch_size, self.num_action))
+        action_one_hot = torch.zeros((batch_size, self.num_action),
+                                     device=self.device)
 
         action_one_hot = action_one_hot.scatter(1, action.unsqueeze(1), 1) \
             .to(torch.float)
@@ -88,7 +89,7 @@ def run_episodes(train, model, memory, env, num_episodes, writer):
             # updade model
             loss = train(model, memory, optimizer)
 
-            print(f"loss: {loss}")
+            # print(f'loss: {loss}')
             # writer.add_scalar("loss", loss or 0, global_steps)
 
         episode_durations.append(ep_length)

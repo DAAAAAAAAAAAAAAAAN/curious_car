@@ -7,7 +7,7 @@ from dqn import QNetwork
 
 
 def test_policy(state):
-    model = QNetwork()
+    model = QNetwork(device="cuda")
     action = model(state)
     return action
 
