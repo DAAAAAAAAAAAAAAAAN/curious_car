@@ -45,7 +45,7 @@ def select_action(model, state, epsilon):
 
         # determine action to choose based on eps
         if random.random() < epsilon:
-            return random.choice([0,1])
+            return random.choice([0,1,2])
 
         return greedy_a
 
@@ -103,30 +103,31 @@ def train(model, memory, optimizer, batch_size, discount_factor):
 
     return loss.item()  # Returns a Python scalar, and releases history (similar to .detach())
 
-def render(model, seed, global_steps):
-    import time
-    # The nice thing about the CARTPOLE is that it has very nice rendering functionality (if you are on a local environment). Let's have a look at an episode
-    env.seed(seed)
-    random.seed(seed)
 
+def render(start, actions, seed):
+    import time
+
+    env.seed(seed)
     state = env.reset()
+
+    assert (state == start).all(), (state, start)
+
     env.render()
-    done = False
     ep_length = 0
     max_x = state[0]
-    while not done:
-        action = select_action(model, state, global_steps)
+
+    for action in actions:
 
         # perform action
-        next_state, reward, done, _ = env.step(action)
+        _, _, done, _ = env.step(action)
         env.render()
         time.sleep(0.05)
 
         ep_length += 1
-        max_x = max(max_x, next_state[0])
 
-    print('finished in', ep_length, 'at', max_x)
+    print('finished in', ep_length)
     env.close()  # Close the environ
+
 
 def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate):
 
@@ -146,16 +147,22 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
         ep_length = 0
         max_x = state[0]
 
+        # save action for rendering
+        actions = []
+        start = state
+
         # keep acting until terminal state is reached
         while not done:
             # calculate next action
             epsilon = get_epsilon(global_steps)
             action = select_action(model, state, epsilon)
 
+            actions.append(action)
+
             # perform action
             next_state, reward, done, _ = env.step(action)
 
-            # remeber transition
+            # remember transition
             memory.push((state, action, reward, next_state, done))
             state = next_state
 
@@ -163,12 +170,12 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
             global_steps += 1
             max_x = max(max_x, state[0])
 
-            # updade model
+            # update model
             loss = train(model, memory, optimizer, batch_size, discount_factor)
 
-        if ep_length < 200:
+        if i == 0 or ep_length < 200:
             with torch.no_grad():
-                render(model, i, global_steps)
+                render(start, actions, i)
 
         episode_durations.append(ep_length)
         losses.append(loss)
@@ -193,4 +200,6 @@ env.seed(seed)
 model = QNetwork(num_hidden)
 
 episode_durations, episode_loss = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
-print(episode_durations, episode_loss)
+print(episode_durations)
+print()
+print(episode_loss)
