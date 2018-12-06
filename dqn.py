@@ -1,3 +1,5 @@
+from state_predictor import StatePredictor
+
 __author__ = 'Aron'
 
 import random
@@ -67,7 +69,7 @@ def compute_target(model, reward, next_state, done, discount_factor):
     # mutilpy q_values with 0 for terminal states
     return reward + discount_factor * (done == False).type(torch.float) * q_values
 
-def train(model, memory, optimizer, batch_size, discount_factor):
+def train(model, memory, optimizer, batch_size, discount_factor=None):
     # DO NOT MODIFY THIS FUNCTION
 
     # don't learn without some decent experience
@@ -87,14 +89,19 @@ def train(model, memory, optimizer, batch_size, discount_factor):
     reward = torch.tensor(reward, dtype=torch.float)
     done = torch.tensor(done, dtype=torch.uint8)  # Boolean
 
-    # compute the q value
-    q_val = compute_q_val(model, state, action)
+    if isinstance(model, QNetwork):
+        # compute the q value
+        q_val = compute_q_val(model, state, action)
 
-    with torch.no_grad():  # Don't compute gradient info for the target (semi-gradient)
-        target = compute_target(model, reward, next_state, done, discount_factor)
+        with torch.no_grad():  # Don't compute gradient info for the target (semi-gradient)
+            target = compute_target(model, reward, next_state, done, discount_factor)
 
-    # loss is measured from error between current and newly expected Q values
-    loss = F.smooth_l1_loss(q_val, target)
+        # loss is measured from error between current and newly expected Q values
+        loss = F.smooth_l1_loss(q_val, target)
+    elif isinstance(model, StatePredictor):
+
+        prediction = model(state, action)
+        loss = F.mse_loss(prediction, next_state.to(model.device))
 
     # backpropagation of loss to Neural Network (PyTorch magic)
     optimizer.zero_grad()
@@ -114,7 +121,6 @@ def render(start, actions, seed):
 
     env.render()
     ep_length = 0
-    max_x = state[0]
 
     for action in actions:
 
@@ -129,9 +135,19 @@ def render(start, actions, seed):
     env.close()  # Close the environ
 
 
-def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate):
+def run_episodes(train, q_model, curiosity_model, memory, env, num_episodes,
+                 batch_size, discount_factor, learn_rate, curious=False, render=False):
 
-    optimizer = optim.Adam(model.parameters(), learn_rate)
+    optimizer = optim.Adam([
+        {
+            'params' : q_model.parameters(),
+            'lr' : learn_rate
+        },
+        {
+            'params' : curiosity_model.parameters(),
+            'lr' : learn_rate
+        }
+    ])
 
     global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
     episode_durations = []  #
@@ -159,8 +175,12 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
 
             actions.append(action)
 
-            # perform action
+           # perform action
             next_state, reward, done, _ = env.step(action)
+
+            if curious:
+                with torch.no_grad():
+                    reward = curiosity_model(state, action)
 
             # remember transition
             memory.push((state, action, reward, next_state, done))
@@ -171,14 +191,16 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
             max_x = max(max_x, state[0])
 
             # update model
-            loss = train(model, memory, optimizer, batch_size, discount_factor)
+            q_loss = train(q_model, memory, optimizer, batch_size, discount_factor)
 
-        if i == 0 or ep_length < 200:
-            with torch.no_grad():
-                render(start, actions, i)
+            if curious:
+                curiosity_loss = train(curiosity_model, memory, optimizer, batch_size)
+
+        if ep_length < 200 and render:
+            render(start, actions, i)
 
         episode_durations.append(ep_length)
-        losses.append(loss)
+        losses.append(q_loss)
         # print(episode_durations, loss)
 
     return episode_durations, losses
@@ -201,6 +223,7 @@ if __name__ == '__main__':
     env.seed(seed)
 
     model = QNetwork(num_hidden)
+    
 
     episode_durations, episode_loss = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
     print(episode_durations, episode_loss)
