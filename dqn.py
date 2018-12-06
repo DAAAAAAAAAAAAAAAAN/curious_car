@@ -8,6 +8,7 @@ import torch.nn.functional as F
 import gym
 from tqdm import tqdm as _tqdm
 from ReplayMemory import ReplayMemory
+from matplotlib import pyplot as plt
 
 def tqdm(*args, **kwargs):
     return _tqdm(*args, **kwargs, mininterval=1)  # Safety, do not overflow buffer
@@ -108,6 +109,7 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
 
     global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
     episode_durations = []  #
+    losses =[]
     for i in tqdm(range(num_episodes)):
 
         # initialize episode
@@ -135,16 +137,18 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
             loss = train(model, memory, optimizer, batch_size, discount_factor)
 
         episode_durations.append(ep_length)
+        losses.append(loss)
+        # print(episode_durations, loss)
 
-    return episode_durations
+    return episode_durations, losses
 
 # Let's run it!
-num_episodes = 100
+num_episodes = 500
 batch_size = 64
-discount_factor = 0.8
-learn_rate = 1e-3
+discount_factor = 0.97
+learn_rate = 5e-4
 memory = ReplayMemory(10000)
-num_hidden = 128
+num_hidden = 200
 seed = 42  # This is not randomly chosen
 
 # We will seed the algorithm (before initializing QNetwork!) for reproducability
@@ -154,5 +158,5 @@ env.seed(seed)
 
 model = QNetwork(num_hidden)
 
-episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
-print(episode_durations)
+episode_durations, episode_loss = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
+print(episode_durations, episode_loss)
