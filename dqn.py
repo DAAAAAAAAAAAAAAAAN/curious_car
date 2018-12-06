@@ -8,6 +8,7 @@ import torch.nn.functional as F
 import gym
 from tqdm import tqdm as _tqdm
 from ReplayMemory import ReplayMemory
+from matplotlib import pyplot as plt
 
 def tqdm(*args, **kwargs):
     return _tqdm(*args, **kwargs, mininterval=1)  # Safety, do not overflow buffer
@@ -102,18 +103,48 @@ def train(model, memory, optimizer, batch_size, discount_factor):
 
     return loss.item()  # Returns a Python scalar, and releases history (similar to .detach())
 
+def render(model, seed, global_steps):
+    import time
+    # The nice thing about the CARTPOLE is that it has very nice rendering functionality (if you are on a local environment). Let's have a look at an episode
+    env.seed(seed)
+    random.seed(seed)
+
+    state = env.reset()
+    env.render()
+    done = False
+    ep_length = 0
+    max_x = state[0]
+    while not done:
+        action = select_action(model, state, global_steps)
+
+        # perform action
+        next_state, reward, done, _ = env.step(action)
+        env.render()
+        time.sleep(0.05)
+
+        ep_length += 1
+        max_x = max(max_x, next_state[0])
+
+    print('finished in', ep_length, 'at', max_x)
+    env.close()  # Close the environ
+
 def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate):
 
     optimizer = optim.Adam(model.parameters(), learn_rate)
 
     global_steps = 0  # Count the steps (do not reset at episode start, to compute epsilon)
     episode_durations = []  #
+    losses =[]
     for i in tqdm(range(num_episodes)):
+
+        env.seed(i)
+        random.seed(i)
 
         # initialize episode
         done = False
         state = env.reset()
         ep_length = 0
+        max_x = state[0]
 
         # keep acting until terminal state is reached
         while not done:
@@ -130,23 +161,31 @@ def run_episodes(train, model, memory, env, num_episodes, batch_size, discount_f
 
             ep_length += 1
             global_steps += 1
+            max_x = max(max_x, state[0])
 
             # updade model
             loss = train(model, memory, optimizer, batch_size, discount_factor)
 
-        episode_durations.append(ep_length)
+        if ep_length < 200:
+            with torch.no_grad():
+                render(model, i, global_steps)
 
-    return episode_durations
+        episode_durations.append(ep_length)
+        losses.append(loss)
+        # print(episode_durations, loss)
+
+    return episode_durations, losses
 
 
 if __name__ == '__main__':
+
     # Let's run it!
-    num_episodes = 100
+    num_episodes = 500
     batch_size = 64
-    discount_factor = 0.8
-    learn_rate = 1e-3
+    discount_factor = 0.97
+    learn_rate = 5e-4
     memory = ReplayMemory(10000)
-    num_hidden = 128
+    num_hidden = 200
     seed = 42  # This is not randomly chosen
 
     # We will seed the algorithm (before initializing QNetwork!) for reproducability
@@ -156,5 +195,5 @@ if __name__ == '__main__':
 
     model = QNetwork(num_hidden)
 
-    episode_durations = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
-    print(episode_durations)
+    episode_durations, episode_loss = run_episodes(train, model, memory, env, num_episodes, batch_size, discount_factor, learn_rate)
+    print(episode_durations, episode_loss)
