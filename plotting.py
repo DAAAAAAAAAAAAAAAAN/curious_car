@@ -1,14 +1,16 @@
-import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import numpy as np
 import torch
 
-from dqn import QNetwork
+from models import QNetwork
+
+__all__ = ['visualize_policy']
 
 
-def test_policy(state):
+def _test_policy(state):
     model = QNetwork(device="cuda")
-    action = model(state)
+    action = model(state.to(model.device))
     return action
 
 
@@ -28,8 +30,8 @@ def visualize_policy(policy):
     output = policy(state)
     action = output.argmax(dim=1)
     cmap = plt.cm.get_cmap('coolwarm', 3)
-    plt.pcolormesh(x, y, action.unsqueeze(0).view(10, 10).numpy(),
-                       cmap=cmap)
+    plt.pcolormesh(x, y, action.unsqueeze(0).view(10, 10).to("cpu").numpy(),
+                   cmap=cmap)
     plt.xlabel("Position")
     plt.ylabel("Velocity")
     plt.legend([mpatches.Patch(color=cmap(b)) for b in (0, 1, 2)],
@@ -37,4 +39,4 @@ def visualize_policy(policy):
     plt.show()
 
 if __name__ == '__main__':
-    visualize_policy(test_policy)
+    visualize_policy(_test_policy)

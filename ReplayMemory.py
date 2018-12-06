@@ -2,6 +2,7 @@ import random
 
 __author__ = 'Aron'
 
+
 class ReplayMemory:
 
     def __init__(self, capacity):
