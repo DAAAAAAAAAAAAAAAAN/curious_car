@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from torch import optim
 from tqdm import tqdm as _tqdm
 
+import utils
 from ReplayMemory import ReplayMemory
 from defaults import Config
 from models import StatePredictor, QNetwork
@@ -116,7 +117,7 @@ def run_episodes(train, q_model, curiosity_model, memory, env, config: Config):
     global_steps = 0
     episode_durations = []  #
     losses = []
-    for i in tqdm(range(config.num_episodes)):
+    for i in range(config.num_episodes):
 
         env.seed(i)
         random.seed(i)
@@ -163,19 +164,20 @@ def run_episodes(train, q_model, curiosity_model, memory, env, config: Config):
             max_x = max(max_x, state[0])
 
             # update model
-            q_loss = train(q_model, memory, optimizer, config.batch_size,
-                           config.discount_factor)
+            q_loss = train(q_model, memory, optimizer, config)
             losses.append(q_loss)
 
             if config.curious:
                 curiosity_loss = train(curiosity_model, memory, optimizer,
-                                       config.batch_size)
+                                       config)
 
         print(i, ep_length, max_x)
         if ep_length < 200 and config.render:
-            render_environment(start, actions, i)
+            render_environment(env, start, actions, i)
 
         episode_durations.append(ep_length)
+
+    utils.save_check_point(i, q_model, curiosity_model, config)
 
     return episode_durations, losses
 
