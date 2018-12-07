@@ -20,8 +20,8 @@ def visualize_policy(policy):
     max_position = 0.6
     max_speed = 0.07
 
-    x = np.linspace(min_position, max_position, 10)
-    y = np.linspace(-max_speed, max_speed, 10)
+    x = np.linspace(min_position, max_position, 100)
+    y = np.linspace(-max_speed, max_speed, 100)
     x, y = np.meshgrid(x, y)
     xx = torch.tensor(x, dtype=torch.float).view(-1)
     yy = torch.tensor(y, dtype=torch.float).view(-1)
@@ -30,7 +30,7 @@ def visualize_policy(policy):
     output = policy(state)
     action = output.argmax(dim=1)
     cmap = plt.cm.get_cmap('coolwarm', 3)
-    plt.pcolormesh(x, y, action.unsqueeze(0).view(10, 10).to("cpu").numpy(),
+    plt.pcolormesh(x, y, action.unsqueeze(0).view(100, 100).to("cpu").numpy(),
                    cmap=cmap)
     plt.xlabel("Position")
     plt.ylabel("Velocity")
@@ -39,4 +39,8 @@ def visualize_policy(policy):
     plt.show()
 
 if __name__ == '__main__':
-    visualize_policy(_test_policy)
+
+    model = QNetwork(num_hidden=200)
+    model.load_state_dict(torch.load("checkpoints/2018-12-07-1544193677-q-model.data"))
+
+    visualize_policy(model)

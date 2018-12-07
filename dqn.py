@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from torch import optim
 from tqdm import tqdm as _tqdm
 
+import plotting
 import utils
 from ReplayMemory import ReplayMemory
 from defaults import Config
@@ -172,12 +173,17 @@ def run_episodes(train, q_model, curiosity_model, memory, env, config: Config):
                                        config)
 
         print(i, ep_length, max_x)
-        if ep_length < 200 and config.render:
-            render_environment(env, start, actions, i)
+        plotting.visualize_policy(q_model)
+        if ep_length < 200:
+            if config.render:
+                render_environment(env, start, actions, i)
+            utils.save_check_point(q_model, curiosity_model, config,
+                                   episode=i, max_x=max_x)
 
         episode_durations.append(ep_length)
+        utils.save_check_point(q_model, curiosity_model, config,
+                               episode=i, max_x=max_x)
 
-    utils.save_check_point(i, q_model, curiosity_model, config)
 
     return episode_durations, losses
 
