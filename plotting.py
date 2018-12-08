@@ -2,6 +2,9 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+import seaborn as sns
+import os
+import pandas as pd
 
 from models import QNetwork
 
@@ -12,6 +15,43 @@ def _test_policy(state):
     model = QNetwork(device="cuda")
     action = model(state.to(model.device))
     return action
+
+
+
+def visualize_confidence_bounds(episodes, confidence_type = "95_ci"):
+    # Possible percentile work-around in seaborn: https://stackoverflow.com/questions/37767719/timeseries-plot-with-min-max-shading-using-seaborn
+    print(episodes.head())
+    sns.set(style="darkgrid")
+    f, axes = plt.subplots(2, 1, sharex=True)
+
+    # grid = sns.FacetGrid(episodes, row = "episode")
+    # grid = sns.FacetGrid(episodes, row = "timepoint")
+    # grid()
+
+
+    sns.relplot(x='timepoint', y='signal', hue='event', style='event', kind='line', data = episodes)
+    sns.relplot(x='timepoint', y='signal', style='event', kind='line', data = episodes)
+
+    # plt.setp()
+    plt.tight_layout(axes)
+    plt.show()
+
+
+def episode_data_to_dataframe(path):
+    # Needs a path to a directory with csv files containing the data of different runs.
+    # Random_seed_num, Episode, Max-x, max_time_step_of_episode(extrinsic), intrinsic_reward(mean), min,max,median
+
+    all_dfs = []
+
+    for i, filename in enumerate(os.listdir(path)):
+        if filename.endswith('csv'):
+            # Extaract headers from first csv
+                episodes_df = pd.DataFrame.from_csv(path+filename, headers = 0)
+                all_dfs.append(episodes_df)
+
+    all_episodes = pd.concat(all_dfs, axis=0, ignore_index=True)
+
+    return all_episodes
 
 
 
@@ -39,4 +79,8 @@ def visualize_policy(policy):
     plt.show()
 
 if __name__ == '__main__':
-    visualize_policy(_test_policy)
+    # visualize_policy(_test_policy)
+    fmri = sns.load_dataset("fmri")
+
+
+    visualize_confidence_bounds(fmri)
