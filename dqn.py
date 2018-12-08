@@ -14,6 +14,8 @@ from ReplayMemory import ReplayMemory
 from defaults import Config
 from models import StatePredictor, QNetwork
 from utils import render_environment
+import os
+import csv
 
 
 def tqdm(*args, **kwargs):
@@ -107,7 +109,7 @@ def train(model, memory, optimizer, config: Config):
     return loss.item()
 
 
-def run_episodes(train, q_model, curiosity_model, memory, env, config: Config):
+def run_episodes(train, q_model, curiosity_model, memory, env, experiment_seed, config: Config):
     optimizer = optim.Adam(
         [{'params': q_model.parameters(),
           'lr': config.lr_q_model},
@@ -116,18 +118,22 @@ def run_episodes(train, q_model, curiosity_model, memory, env, config: Config):
 
     # Count the steps (do not reset at episode start, to compute epsilon)
     global_steps = 0
+    all_metrics = []
     episode_durations = []  #
     losses = []
     for i in range(config.num_episodes):
 
-        env.seed(i)
-        random.seed(i)
+        episode_seed = experiment_seed + i
+        env.seed(episode_seed)
+        random.seed(episode_seed)
 
         # initialize episode
         done = False
         state = env.reset()
         ep_length = 0
         max_x = state[0]
+        extrinsic_rewards = []
+        intrinsic_rewards = []
 
         # save action for rendering
         actions = []
@@ -142,19 +148,28 @@ def run_episodes(train, q_model, curiosity_model, memory, env, config: Config):
             actions.append(action)
 
             # perform action
-            next_state, reward, done, _ = env.step(action)
+            next_state, extrinsic_reward, done, _ = env.step(action)
+
+            # calculate intrinsic reward
+            with torch.no_grad():
+                state_tensor = torch.tensor([state], dtype=torch.float,
+                                            device=curiosity_model.device)
+                action = torch.tensor([action],
+                                      device=curiosity_model.device)
+                pred = curiosity_model(state_tensor, action)
+                intrinsic_reward = F.mse_loss(pred, torch.tensor([next_state],
+                                                       dtype=torch.float,
+                                                       device=curiosity_model.device))
+                intrinsic_reward = intrinsic_reward.item()
+
+            # Save metrics for later
+            extrinsic_rewards.append(extrinsic_reward)
+            intrinsic_rewards.append(intrinsic_reward)
 
             if config.curious:
-                with torch.no_grad():
-                    state_tensor = torch.tensor([state], dtype=torch.float,
-                                                device=curiosity_model.device)
-                    action = torch.tensor([action],
-                                          device=curiosity_model.device)
-                    pred = curiosity_model(state_tensor, action)
-                    reward = F.mse_loss(pred, torch.tensor([next_state],
-                                                           dtype=torch.float,
-                                                           device=curiosity_model.device))
-                    reward = reward.item()
+                reward = intrinsic_reward
+            else:
+                reward = extrinsic_reward
 
             # remember transition
             memory.push((state, action, reward, next_state, done))
@@ -168,12 +183,27 @@ def run_episodes(train, q_model, curiosity_model, memory, env, config: Config):
             q_loss = train(q_model, memory, optimizer, config)
             losses.append(q_loss)
 
-            if config.curious:
-                curiosity_loss = train(curiosity_model, memory, optimizer,
-                                       config)
+            curiosity_loss = train(curiosity_model, memory, optimizer,
+                                   config)
 
-        print(i, ep_length, max_x)
-        plotting.visualize_policy(q_model)
+        # Finished the episode
+
+        # Save metrics for this episode
+        episode_metrics = {}
+        episode_metrics['episode'] = i
+        episode_metrics['target_reward'] = 'intrinsic' if config.curious else 'extrinsic'
+        episode_metrics['episode_seed'] = episode_seed
+        episode_metrics['episode_length'] = ep_length
+        episode_metrics['total_extrinsic_reward'] = np.sum(extrinsic_rewards)
+        episode_metrics['total_intrinsic_reward'] = np.sum(intrinsic_rewards)
+        episode_metrics['min_extrinsic_reward'] = np.min(intrinsic_rewards)
+        episode_metrics['median_extrinsic_reward'] = np.median(intrinsic_rewards)
+        episode_metrics['max_extrinsic_reward'] = np.max(intrinsic_rewards)
+        episode_metrics['max_x'] = max_x
+        all_metrics.append(episode_metrics)
+
+        print(episode_seed, ep_length, max_x)
+        #plotting.visualize_policy(q_model)
         if ep_length < 200:
             if config.render:
                 render_environment(env, start, actions, i)
@@ -184,34 +214,55 @@ def run_episodes(train, q_model, curiosity_model, memory, env, config: Config):
         utils.save_check_point(q_model, curiosity_model, config,
                                episode=i, max_x=max_x)
 
+    # Finished all the episodes
+
+    if config.save_to_disk:
+        # Save metrics to disk
+        # Create folder, named by the seed
+        folder = "experiments"
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+
+        # Export CSV file with all metrics for each episode
+        filename = "{}/metrics_{}.csv".format(folder, experiment_seed)
+        with open(filename, 'w') as f:
+            w = csv.DictWriter(f, all_metrics[0].keys())
+            w.writeheader()
+            w.writerows(all_metrics)
 
     return episode_durations, losses
 
 
 def main(config: Config):
+
     # Let's run it!
-    memory = ReplayMemory(config.replay_memory_size)
 
-    # We will seed the algorithm (for reproducability).
-    random.seed(config.seed)
-    torch.manual_seed(config.seed)
-    env.seed(config.seed)
+    for i in range(config.num_experiments):
+        experiment_seed = config.seed + i * config.num_episodes
+        memory = ReplayMemory(config.replay_memory_size)
 
-    q_model = QNetwork(config.device, config.num_hidden_q_model)
-    curiousity_model = StatePredictor(2, 3,
-                                      config.num_hidden_curiosity_model,
-                                      config.device)
+        # We will seed the algorithm (for reproducability).
+        random.seed(experiment_seed)
+        torch.manual_seed(experiment_seed)
+        env.seed(experiment_seed)
 
-    episode_durations, episode_loss = run_episodes(train, q_model,
-                                                   curiousity_model, memory,
-                                                   env, config)
-    print(episode_durations, episode_loss)
+        q_model = QNetwork(config.device, config.num_hidden_q_model)
+        curiousity_model = StatePredictor(2, 3,
+                                          config.num_hidden_curiosity_model,
+                                          config.device)
+
+
+        episode_durations, episode_loss = run_episodes(train, q_model,
+                                                       curiousity_model, memory,
+                                                       env, experiment_seed, config)
+        print(i, episode_durations, episode_loss)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--device', type=str, default=Config.device,
                         help="Training device 'cpu' or 'cuda:0'")
+    parser.add_argument('--num_experiments', type=int, default=Config.num_experiments)
     parser.add_argument('--num_episodes', type=int,
                         default=Config.num_episodes)
     parser.add_argument('--batch_size', type=int, default=Config.batch_size)
@@ -229,6 +280,7 @@ if __name__ == '__main__':
                         default=Config.num_hidden_curiosity_model)
     parser.add_argument('--render', type=bool, default=Config.render)
     parser.add_argument('--curious', type=bool, default=Config.curious)
+    parser.add_argument('--save_to_disk', type=bool, default=Config.save_to_disk)
     config: Config = parser.parse_args()
 
     main(config)

@@ -12,6 +12,7 @@ class Config:
     # lr_q_model = 5e-4
     batch_size = 64
     replay_memory_size = 10000
+    num_experiments = 1
     num_episodes = 500
     discount_factor = 0.97
 
@@ -21,4 +22,5 @@ class Config:
 
     render = True
     curious = True
+    save_to_disk = False
 
