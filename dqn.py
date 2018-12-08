@@ -224,7 +224,7 @@ def run_episodes(train, q_model, curiosity_model, memory, env, experiment_seed, 
             os.makedirs(folder)
 
         # Export CSV file with all metrics for each episode
-        filename = "{}/metrics_{}.csv".format(folder, experiment_seed)
+        filename = "{}/metrics_{}_{}.csv".format(folder, "curious" if config.curious else "noncurious", experiment_seed)
         with open(filename, 'w') as f:
             w = csv.DictWriter(f, all_metrics[0].keys())
             w.writeheader()
