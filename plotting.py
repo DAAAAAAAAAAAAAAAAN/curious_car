@@ -2,8 +2,10 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-
+import os
 from models import QNetwork
+import pandas as pd
+import seaborn as sns
 
 __all__ = ['visualize_policy']
 
@@ -17,20 +19,23 @@ def _test_policy(state):
 
 def visualize_confidence_bounds(episodes, confidence_type = "95_ci"):
     # Possible percentile work-around in seaborn: https://stackoverflow.com/questions/37767719/timeseries-plot-with-min-max-shading-using-seaborn
-    print(episodes.head())
+    print(list(episodes))
+    print(episodes)
     sns.set(style="darkgrid")
-    f, axes = plt.subplots(2, 1, sharex=True)
+    # f, axes = plt.subplots(2, 1, sharex=True)
 
     # grid = sns.FacetGrid(episodes, row = "episode")
     # grid = sns.FacetGrid(episodes, row = "timepoint")
     # grid()
 
+    plt.subplot(211)
+    sns.relplot(x='episode', y='max_x', hue='target_reward', style='target_reward', kind='line', data = episodes)
+    sns.relplot(x='episode', y='total_intrinsic_reward', hue='target_reward', style='target_reward', kind='line', data = episodes)
 
-    sns.relplot(x='timepoint', y='signal', hue='event', style='event', kind='line', data = episodes)
-    sns.relplot(x='timepoint', y='signal', style='event', kind='line', data = episodes)
+    # sns.relplot(x='timepoint', y='signal', style='target_reward', kind='line', data = episodes)
 
-    # plt.setp()
-    plt.tight_layout(axes)
+
+    # plt.tight_layout(axes)
     plt.show()
 
 
@@ -42,11 +47,15 @@ def episode_data_to_dataframe(path):
 
     for i, filename in enumerate(os.listdir(path)):
         if filename.endswith('csv'):
-            # Extaract headers from first csv
-                episodes_df = pd.DataFrame.from_csv(path+filename, headers = 0)
+            # Extract headers from first csv
+                episodes_df = pd.DataFrame.from_csv(path+"/"+filename, header = 0, index_col=1)
+
+                # add index as column per df so we can use it as x-axis
+                episodes_df.reset_index(inplace=True)
                 all_dfs.append(episodes_df)
 
     all_episodes = pd.concat(all_dfs, axis=0, ignore_index=True)
+    print(all_episodes.head())
 
     return all_episodes
 
@@ -78,6 +87,8 @@ def visualize_policy(policy):
 if __name__ == '__main__':
     # visualize_policy(_test_policy)
     fmri = sns.load_dataset("fmri")
+    print(fmri)
+    path = "./experiments"
+    episodes = episode_data_to_dataframe(path)
 
-
-    visualize_confidence_bounds(fmri)
+    visualize_confidence_bounds(episodes)
