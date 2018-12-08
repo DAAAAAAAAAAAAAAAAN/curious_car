@@ -234,9 +234,9 @@ def run_episodes(train, q_model, curiosity_model, memory, env, experiment_seed, 
 
 
 def main(config: Config):
+    print(config)
 
     # Let's run it!
-
     for i in range(config.num_experiments):
         experiment_seed = config.seed + i * config.num_episodes
         memory = ReplayMemory(config.replay_memory_size)
@@ -255,7 +255,19 @@ def main(config: Config):
         episode_durations, episode_loss = run_episodes(train, q_model,
                                                        curiousity_model, memory,
                                                        env, experiment_seed, config)
-        print(i, episode_durations, episode_loss)
+        # print(i, episode_durations, episode_loss)
+        print("Finished experiment {}/{}".format(i+1, config.num_experiments))
+
+# this thing is necessary because argparse cannot deal
+# with explicitly setting boolean flags to false
+def str_to_bool(value):
+    if isinstance(value, bool):
+        return value
+    if value.lower() in {'false', 'f', '0', 'no', 'n'}:
+        return False
+    elif value.lower() in {'true', 't', '1', 'yes', 'y'}:
+        return True
+    raise ValueError(f'{value} is not a valid boolean value')
 
 
 if __name__ == '__main__':
@@ -278,9 +290,9 @@ if __name__ == '__main__':
                         default=Config.num_hidden_q_model)
     parser.add_argument('--num_hidden_curiosity_model', type=int,
                         default=Config.num_hidden_curiosity_model)
-    parser.add_argument('--render', type=bool, default=Config.render)
-    parser.add_argument('--curious', type=bool, default=Config.curious)
-    parser.add_argument('--save_to_disk', type=bool, default=Config.save_to_disk)
+    parser.add_argument('--render', type=str_to_bool, default=Config.render, nargs='?', const=True)
+    parser.add_argument('--curious', type=str_to_bool, default=Config.curious, nargs='?', const=True)
+    parser.add_argument('--save_to_disk', type=str_to_bool, default=Config.save_to_disk, nargs='?', const=True)
     config: Config = parser.parse_args()
 
     main(config)
