@@ -20,7 +20,7 @@ class Config:
     num_hidden_q_model = 200
     num_hidden_curiosity_model = 5
 
-    render = True
+    render = False
     curious = True
-    save_to_disk = False
+    save_to_disk = True
 
