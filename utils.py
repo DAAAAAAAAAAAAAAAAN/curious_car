@@ -29,7 +29,7 @@ def render_environment(env, start, actions, seed):
     env.close()  # Close the environ
 
 
-def save_check_point(episode, q_model, curiosity_model, config):
+def save_check_point(q_model, curiosity_model, config, **kwargs):
     path = "checkpoints/"
     if not os.path.isdir(path):
         os.mkdir(path)
@@ -47,7 +47,7 @@ def save_check_point(episode, q_model, curiosity_model, config):
     with open(os.path.join(path, file_meta), "w") as f:
         f.write(json.dumps({
             **vars(config),
-            'episode': episode,
             'q_model': file_q_model,
-            'curiosity_model': file_curiosity_model
+            'curiosity_model': file_curiosity_model,
+            **kwargs
         }, indent=4))
