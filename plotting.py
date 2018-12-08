@@ -17,10 +17,10 @@ def _test_policy(state):
 
 
 
-def visualize_confidence_bounds(episodes, confidence_type = "95_ci"):
+def visualize_confidence_bounds(episodes, testing = True, confidence_type = "95_ci"):
     # Possible percentile work-around in seaborn: https://stackoverflow.com/questions/37767719/timeseries-plot-with-min-max-shading-using-seaborn
-    print(list(episodes))
-    print(episodes)
+    # print(list(episodes))
+    # print(episodes)
     sns.set(style="darkgrid")
     f, (ax1,ax2, ax3) = plt.subplots(3, 1, sharex=True)
 
@@ -30,9 +30,12 @@ def visualize_confidence_bounds(episodes, confidence_type = "95_ci"):
 
     # print(axes)
     # plt.subplot(211)
-    sns.lineplot(x='episode', y='max_x', hue='target_reward', style='target_reward', data = episodes, ax=ax1)
-    sns.lineplot(x='episode', y='total_intrinsic_reward', hue='target_reward', style='target_reward', data = episodes, ax=ax2)
-    sns.lineplot(x='episode', y='total_extrinsic_reward', hue='target_reward', style='target_reward', data = episodes, ax=ax3)
+    # if testing:
+        # episodes = episodes[:100]
+
+    sns.lineplot(x='episode', y='max_x', hue='target_reward', data = episodes, ax=ax1)
+    sns.lineplot(x='episode', y='total_intrinsic_reward', hue='target_reward', data = episodes, ax=ax2)
+    sns.lineplot(x='episode', y='total_extrinsic_reward', hue='target_reward', data = episodes, ax=ax3)
     # sns.relplot(x='timepoint', y='signal', style='target_reward', kind='line', data = episodes)
 
 
@@ -88,8 +91,6 @@ def visualize_policy(policy):
 
 if __name__ == '__main__':
     # visualize_policy(_test_policy)
-    fmri = sns.load_dataset("fmri")
-    print(fmri)
     path = "./experiments"
     episodes = episode_data_to_dataframe(path)
 
