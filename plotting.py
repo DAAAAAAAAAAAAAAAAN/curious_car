@@ -22,20 +22,22 @@ def visualize_confidence_bounds(episodes, confidence_type = "95_ci"):
     print(list(episodes))
     print(episodes)
     sns.set(style="darkgrid")
-    # f, axes = plt.subplots(2, 1, sharex=True)
+    f, (ax1,ax2, ax3) = plt.subplots(3, 1, sharex=True)
 
     # grid = sns.FacetGrid(episodes, row = "episode")
     # grid = sns.FacetGrid(episodes, row = "timepoint")
     # grid()
 
-    plt.subplot(211)
-    sns.relplot(x='episode', y='max_x', hue='target_reward', style='target_reward', kind='line', data = episodes)
-    sns.relplot(x='episode', y='total_intrinsic_reward', hue='target_reward', style='target_reward', kind='line', data = episodes)
-
+    # print(axes)
+    # plt.subplot(211)
+    sns.lineplot(x='episode', y='max_x', hue='target_reward', style='target_reward', data = episodes, ax=ax1)
+    sns.lineplot(x='episode', y='total_intrinsic_reward', hue='target_reward', style='target_reward', data = episodes, ax=ax2)
+    sns.lineplot(x='episode', y='total_extrinsic_reward', hue='target_reward', style='target_reward', data = episodes, ax=ax3)
     # sns.relplot(x='timepoint', y='signal', style='target_reward', kind='line', data = episodes)
 
 
-    # plt.tight_layout(axes)
+    # plt.tight_layout(axe
+    # s)
     plt.show()
 
 
