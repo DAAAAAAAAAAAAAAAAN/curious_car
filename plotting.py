@@ -34,14 +34,20 @@ def visualize_confidence_bounds(episodes, testing = True, confidence_type = "95_
     # if testing:
         # episodes = episodes[:100]
 
-    sns.lineplot(x='episode', y='max_x', hue='target_reward', data = episodes, ax=ax3)
-    sns.lineplot(x='episode', y='total_intrinsic_reward', hue='target_reward', data = episodes, ax=ax2)
-    sns.lineplot(x='episode', y='total_extrinsic_reward', hue='target_reward', data = episodes, ax=ax1)
-    # sns.relplot(x='timepoint', y='signal', style='target_reward', kind='line', data = episodes)
+
+    # Fast plotting
+    sns.lineplot(x='episode', y='max_x', hue='target_reward',ci=None, data = episodes, ax=ax3)
+    sns.lineplot(x='episode', y='total_intrinsic_reward', hue='target_reward',ci=None, data = episodes, ax=ax2)
+    sns.lineplot(x='episode', y='total_extrinsic_reward', hue='target_reward', ci=None, data = episodes, ax=ax1)
 
 
-    # plt.tight_layout(axe
-    # s)
+    # Slow plotting, but nice bootstrapped confidence intervals:
+    # sns.lineplot(x='episode', y='max_x', hue='target_reward', data = episodes, ax=ax3)
+    # sns.lineplot(x='episode', y='total_intrinsic_reward', hue='target_reward', data = episodes, ax=ax2)
+    # sns.lineplot(x='episode', y='total_extrinsic_reward', hue='target_reward', data = episodes, ax=ax1)
+
+
+    # plt.tight_layout(axes)
     plt.show()
 
 
