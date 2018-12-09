@@ -24,6 +24,7 @@ def visualize_confidence_bounds(episodes, testing = True, confidence_type = "95_
     sns.set(style="darkgrid")
     f, (ax1,ax2, ax3) = plt.subplots(3, 1, sharex=True)
 
+    ax2.set(yscale="log")
     # grid = sns.FacetGrid(episodes, row = "episode")
     # grid = sns.FacetGrid(episodes, row = "timepoint")
     # grid()
@@ -33,9 +34,9 @@ def visualize_confidence_bounds(episodes, testing = True, confidence_type = "95_
     # if testing:
         # episodes = episodes[:100]
 
-    sns.lineplot(x='episode', y='max_x', hue='target_reward', data = episodes, ax=ax1)
+    sns.lineplot(x='episode', y='max_x', hue='target_reward', data = episodes, ax=ax3)
     sns.lineplot(x='episode', y='total_intrinsic_reward', hue='target_reward', data = episodes, ax=ax2)
-    sns.lineplot(x='episode', y='total_extrinsic_reward', hue='target_reward', data = episodes, ax=ax3)
+    sns.lineplot(x='episode', y='total_extrinsic_reward', hue='target_reward', data = episodes, ax=ax1)
     # sns.relplot(x='timepoint', y='signal', style='target_reward', kind='line', data = episodes)
 
 
