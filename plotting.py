@@ -34,6 +34,10 @@ def visualize_confidence_bounds(episodes, confidence_interval = False):
     # if testing:
         # episodes = episodes[:100]
 
+    sns.lineplot(x='episode', y='max_x', hue='target_reward', data = episodes, ax=ax3)
+    sns.lineplot(x='episode', y='total_intrinsic_reward', hue='target_reward', data = episodes, ax=ax2)
+    sns.lineplot(x='episode', y='total_extrinsic_reward', hue='target_reward', data = episodes, ax=ax1)
+    # sns.relplot(x='timepoint', y='signal', style='target_reward', kind='line', data = episodes)
 
 
     if confidence_interval:
@@ -102,7 +106,7 @@ def visualize_policy(policy):
     plt.ylabel("Velocity")
     plt.legend([mpatches.Patch(color=cmap(b)) for b in (0, 1, 2)],
                ("Left", "Nothing", "Right"))
-    plt.show()
+    plt.show(block=True)
 
 if __name__ == '__main__':
     # visualize_policy(_test_policy)
