@@ -17,7 +17,7 @@ def _test_policy(state):
 
 
 
-def visualize_confidence_bounds(episodes, confidence_interval = False):
+def visualize_confidence_bounds(episodes, confidence_interval, path, hyperparams):
     # Possible percentile work-around in seaborn: https://stackoverflow.com/questions/37767719/timeseries-plot-with-min-max-shading-using-seaborn
     # print(list(episodes))
     # print(episodes)
@@ -33,11 +33,6 @@ def visualize_confidence_bounds(episodes, confidence_interval = False):
     # plt.subplot(211)
     # if testing:
         # episodes = episodes[:100]
-
-    sns.lineplot(x='episode', y='max_x', hue='target_reward', data = episodes, ax=ax3)
-    sns.lineplot(x='episode', y='total_intrinsic_reward', hue='target_reward', data = episodes, ax=ax2)
-    sns.lineplot(x='episode', y='total_extrinsic_reward', hue='target_reward', data = episodes, ax=ax1)
-    # sns.relplot(x='timepoint', y='signal', style='target_reward', kind='line', data = episodes)
 
 
     if confidence_interval:
@@ -59,8 +54,9 @@ def visualize_confidence_bounds(episodes, confidence_interval = False):
 
 
     # plt.tight_layout(axes)
-    plt.savefig('')
-    plt.show()
+    (lrs_q_model,num_hidden_q_model)= hyperparams
+    plt.savefig(path+'plot_'+str(num_hidden_q_model)+'_'+str(lrs_q_model)+'.png')
+    # plt.show()
 
 
 def episode_data_to_dataframe(path):
@@ -108,9 +104,14 @@ def visualize_policy(policy):
                ("Left", "Nothing", "Right"))
     plt.show(block=True)
 
-if __name__ == '__main__':
-    # visualize_policy(_test_policy)
-    path = "./experiments"
+def plot_experiment(path, hyperparams):
     episodes = episode_data_to_dataframe(path)
+    confidence_interval = True
+    visualize_confidence_bounds(episodes,confidence_interval, path, hyperparams)
 
-    visualize_confidence_bounds(episodes)
+
+
+# if __name__ == '__main__':
+    # visualize_policy(_test_policy)
+    # path = "./experiments"
+    # episodes = episode_data_to_dataframe(path)

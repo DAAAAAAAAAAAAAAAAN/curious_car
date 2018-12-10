@@ -4,7 +4,7 @@ class Config:
     seed = 43
 
     render = False
-    curious = True
+    curious = False
     save_to_disk = True
 
     batch_size = 64
@@ -30,7 +30,9 @@ class Config:
     ## Optimized for EXtrinsic rewards
     # Learning
     lr_curiosity_model = 0
-    lr_q_model = 1e-4
+    lr_q_model = 1e-4     # begin met e-6
+
     # Networks
-    num_hidden_q_model = 100
+    num_hidden_q_model = 100 # Begin met 30 nodes
     num_hidden_curiosity_model = 1
+
