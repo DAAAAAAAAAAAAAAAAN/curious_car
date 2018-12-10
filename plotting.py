@@ -17,7 +17,7 @@ def _test_policy(state):
 
 
 
-def visualize_confidence_bounds(episodes, testing = True, confidence_type = "95_ci"):
+def visualize_confidence_bounds(episodes, confidence_interval = False):
     # Possible percentile work-around in seaborn: https://stackoverflow.com/questions/37767719/timeseries-plot-with-min-max-shading-using-seaborn
     # print(list(episodes))
     # print(episodes)
@@ -35,19 +35,27 @@ def visualize_confidence_bounds(episodes, testing = True, confidence_type = "95_
         # episodes = episodes[:100]
 
 
-    # Fast plotting
-    sns.lineplot(x='episode', y='max_x', hue='target_reward',ci=None, data = episodes, ax=ax3)
-    sns.lineplot(x='episode', y='total_intrinsic_reward', hue='target_reward',ci=None, data = episodes, ax=ax2)
-    sns.lineplot(x='episode', y='total_extrinsic_reward', hue='target_reward', ci=None, data = episodes, ax=ax1)
+
+    if confidence_interval:
+        # Slow plotting, but nice bootstrapped confidence intervals:
+        sns.lineplot(x='episode', y='max_x', hue='target_reward', data = episodes, ax=ax3)
+        sns.lineplot(x='episode', y='total_intrinsic_reward', hue='target_reward', data = episodes, ax=ax2)
+        sns.lineplot(x='episode', y='total_extrinsic_reward', hue='target_reward', data = episodes, ax=ax1)
+
+    else:
+        # Fast plotting
+        sns.lineplot(x='episode', y='max_x', hue='target_reward',ci=None, data = episodes, ax=ax3)
+        sns.lineplot(x='episode', y='total_intrinsic_reward', hue='target_reward',ci=None, data = episodes, ax=ax2)
+        sns.lineplot(x='episode', y='total_extrinsic_reward', hue='target_reward', ci=None, data = episodes, ax=ax1)
 
 
-    # Slow plotting, but nice bootstrapped confidence intervals:
-    # sns.lineplot(x='episode', y='max_x', hue='target_reward', data = episodes, ax=ax3)
-    # sns.lineplot(x='episode', y='total_intrinsic_reward', hue='target_reward', data = episodes, ax=ax2)
-    # sns.lineplot(x='episode', y='total_extrinsic_reward', hue='target_reward', data = episodes, ax=ax1)
+    ax1.set(xlabel = 'episode', ylabel = "total extrinsic $r$")
+    ax2.set(ylabel = 'total intrinsic $r$')
+    ax3.set(ylabel = 'max(x) reached')
 
 
     # plt.tight_layout(axes)
+    plt.savefig('')
     plt.show()
 
 
