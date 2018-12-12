@@ -109,7 +109,18 @@ def train(model, memory, optimizer, config: Config):
     return loss.item()
 
 
-def run_episodes(train, q_model, curiosity_model, memory, env, experiment_seed, config: Config):
+def run_episodes(train, q_model, curiosity_model, memory, env, experiment_seed, config: Config, experiment_number):
+    # adjust hyperparameters per experiment:
+    lrs_q_model = [1e-6,5e-6,8e-6,1e-5,1e-6,5e-7,1e-7,5e-8]
+    nums_hidden_q_model = [50,50,50,50,30,30,30,30,30]
+    config.lr_q_model = lrs_q_model[experiment_number-20]
+    config.num_hidden_q_model = nums_hidden_q_model[experiment_number-20]
+
+
+
+
+
+
     optimizer = optim.Adam(
         [{'params': q_model.parameters(),
           'lr': config.lr_q_model},
@@ -219,9 +230,12 @@ def run_episodes(train, q_model, curiosity_model, memory, env, experiment_seed, 
     if config.save_to_disk:
         # Save metrics to disk
         # Create folder, named by the seed
-        folder = "experiments"
+        folder = "experiments/"+str(experiment_number)
         if not os.path.exists(folder):
             os.makedirs(folder)
+            with open(folder+'/test_configs.txt','w') as f1:
+                f1.write('lrs_q_model: '+ str(config.lr_q_model))
+                f1.write('\n nums_hidden_q_model'+ str(config.num_hidden_q_model))
 
         # Export CSV file with all metrics for each episode
         filename = "{}/metrics_{}_{}.csv".format(folder, "curious" if config.curious else "noncurious", experiment_seed)
@@ -229,6 +243,9 @@ def run_episodes(train, q_model, curiosity_model, memory, env, experiment_seed, 
             w = csv.DictWriter(f, all_metrics[0].keys())
             w.writeheader()
             w.writerows(all_metrics)
+
+        path = folder + '/'
+        plotting.plot_experiment(path, (config.lr_q_model,config.num_hidden_q_model))
 
     return episode_durations, losses
 
@@ -251,10 +268,10 @@ def main(config: Config):
                                           config.num_hidden_curiosity_model,
                                           config.device)
 
-
-        episode_durations, episode_loss = run_episodes(train, q_model,
+        for i in range(20,29):
+            episode_durations, episode_loss = run_episodes(train, q_model,
                                                        curiousity_model, memory,
-                                                       env, experiment_seed, config)
+                                                       env, experiment_seed, config, experiment_number = i)
         # print(i, episode_durations, episode_loss)
         print("Finished experiment {}/{}".format(i+1, config.num_experiments))
 

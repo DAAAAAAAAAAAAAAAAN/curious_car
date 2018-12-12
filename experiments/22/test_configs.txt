@@ -1,0 +1,2 @@
+lrs_q_model: 8e-06
+ nums_hidden_q_model50
